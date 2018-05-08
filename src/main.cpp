@@ -77,7 +77,7 @@ int main() {
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
     string sdata = string(data).substr(0, length);
-    cout << sdata << endl;
+    //cout << sdata << endl;
     if (sdata.size() > 2 && sdata[0] == '4' && sdata[1] == '2') {
       string s = hasData(sdata);
       if (s != "") {
@@ -98,28 +98,95 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          double steer_value;
-          double throttle_value;
+
+		  // plan of attack:
+
+		  // 1. take planned path (ptsx / ptsy) in map coords and convert to car coords
+
+		  for (size_t i = 0; i < ptsx.size(); i++){
+
+			  // make points distance relative to car
+			  double delta_x = ptsx[i] - px;
+			  double delta_y = ptsy[i] - py;
+
+			  // now switch coords axis from map to car
+			  ptsx[i] = delta_x * cos(-psi) - delta_y * sin(-psi);
+			  ptsy[i] = delta_x * sin(-psi) + delta_y * cos(-psi);
+
+			  // Todo: do we need this? 
+			  // This check is to try and stop the waypoints appearing behind the car
+			  //if (ptsx[i] < 0)
+				//  ptsx[i] = 0.1;
+		  }
+
+		  Eigen::VectorXd ptsx_eig = Eigen::VectorXd::Map(ptsx.data(), ptsx.size());
+		  Eigen::VectorXd ptsy_eig = Eigen::VectorXd::Map(ptsy.data(), ptsy.size());
+
+		  // 2. Fit a 3rd order polynomial to the curve. Udacity suggested that 3rd order polys are used
+		  //	as they can fit nearly all roadways, so we'll use that here.
+		  auto coeffs = polyfit(ptsx_eig, ptsy_eig, 3);
+
+
+		  // make prediction as to where we will be 100ms into future. This is what we will use as our current state
+		  Eigen::VectorXd state(6);
+
+		  const double latency_estimate = 100 / 1000.0; // 100ms
+
+		  //double estimated_x_pos_after_latency = 0 + v * std::cos(psi) * latency_estimate;
+		  //double estimated_y_pos_after_latency = 0 + v * std::sin(psi) * latency_estimate;
+
+		  double estimated_x_pos_after_latency = v * latency_estimate;
+
+		  // compute the cross track error where our car is after estimated latency
+		  double cte = polyeval(coeffs, estimated_x_pos_after_latency);
+
+		  double epsi = -atan(coeffs[1]);
+
+		  // convert speed from mph to ms
+		  v = (v * 1609.34) / 60.0 / 60.0;
+
+		  // set car estimated state
+
+		  state <<	//estimated_x_pos_after_latency,
+					v * latency_estimate,
+					0,// ..estimated_y_pos_after_latency,
+					0,//psi, 
+					v, 
+					cte, 
+					epsi;
+
+		  // now compute the solution to determine what are next control actuations should be based off state and target trajectory
+
+		  std::vector<double> actuations = mpc.Solve(state, coeffs);
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value;
+
+		  double steer_value = actuations[0] / deg2rad(25);
+		  double throttle_value = actuations[1];
+
+          msgJson["steering_angle"] = -steer_value;
           msgJson["throttle"] = throttle_value;
 
           //Display the MPC predicted trajectory 
-          vector<double> mpc_x_vals;
-          vector<double> mpc_y_vals;
+          vector<double> mpc_x_vals(mpc.pathWaypoints_x.size()-1);
+          vector<double> mpc_y_vals(mpc.pathWaypoints_y.size()-1);
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
+		  for (size_t idx = 1; idx < mpc_x_vals.size(); idx++)
+		  {
+			  mpc_x_vals[idx] = mpc.pathWaypoints_x[idx];
+			  mpc_y_vals[idx] = mpc.pathWaypoints_y[idx];
+		  }
 
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
+          vector<double> next_x_vals(ptsx);
+          vector<double> next_y_vals(ptsy);
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
@@ -129,7 +196,8 @@ int main() {
 
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          //std::cout << msg << std::endl;
+
           // Latency
           // The purpose is to mimic real driving conditions where
           // the car does actuate the commands instantly.
