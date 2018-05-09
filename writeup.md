@@ -1,3 +1,5 @@
+[model]: ./model.png "Model"
+
 # Udacity Model Predicitve Control Project
 
 ## Overview
@@ -9,6 +11,24 @@ The code used relies heavily on several mathematical libraries including Eigen, 
 #### The Model in Detail
 
 This includes the state, actuators and update equations
+
+The actual mechanics of the model used is quite complex, so I shall try to simplify as best, I can.
+
+In its simplest case, we feed in to the model: x position, y position, heading, velocity, cross track error and heading error. Using the equations of the model below (see figure 1) you can see how we update the model for each time step (dt).
+
+![alt text][model]
+*figure 1 - Credit: Udacity*
+
+It should be noted that the data coming from the simulator is in map coordinates, which is as you would expect (y up and x to the right). To make things easier in the computation step, the very first thing we need to do is transform all data points and readings to car coordinates (which is x positive along the car line of sight, with Y to the left). We center the axis on our car position. Once this transformation is done, it makes everything thereafter easier. As an example, the car position is now (0,0), the heading is 0. We can also more easily compute the cross track error (how much to the left or right of the simulator provided waypoints we are), and heading error (the offset between the car heading, which is zero, and the line between simulator waypoints.
+
+To take the simplicity further, we can also more easily take latency into account by moving our car along its heading by *t* seconds to represent the system latency. This is discussed in more detail in the Latency section below.
+
+Finally we pass all of our system state, model constraints and cost factors into a solver, which is thankfully provided in a 3rd party optimized library, which tries to compute the best solution, (driven by minimize the cost of the function) to generate the next accelerator and steering inputs.
+
+To give an example on constraints, we can set that the acceperator must be between -1 (full brake) and +1 (full throttle) so the solver will force the accelerator values into that range. I also set the steering between -25 and +25 degrees as suggested in the Udacity lesson.
+
+I played with different cost penalties - factors that increase the penalty on the algorithm for touching various factors. I set a penalty on the use of accelerator to try to discourage the algorithm to touch that, and a very heavy penalty on big changes in steering angle from update step to update step. I found that this latter penalty had a very powerful effect and smoothed out the steering inputs dramatically. I also set a penalty on the speed of the vehicle deviating from 30mph to keep the car moving at a sensible speed.
+
 
 #### Selecting *N* and *dt* Values
 
