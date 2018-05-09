@@ -27,20 +27,20 @@ Finally we pass all of our system state, model constraints and cost factors into
 
 To give an example on constraints, we can set that the acceperator must be between -1 (full brake) and +1 (full throttle) so the solver will force the accelerator values into that range. I also set the steering between -25 and +25 degrees as suggested in the Udacity lesson.
 
-I played with different cost penalties - factors that increase the penalty on the algorithm for touching various factors. I set a penalty on the use of accelerator to try to discourage the algorithm to touch that, and a very heavy penalty on big changes in steering angle from update step to update step. I found that this latter penalty had a very powerful effect and smoothed out the steering inputs dramatically. I also set a penalty on the speed of the vehicle deviating from 30mph to keep the car moving at a sensible speed.
+I played with different cost penalties - factors that increase the penalty on the algorithm for touching various factors. I set a penalty on the use of accelerator to try to discourage the algorithm to touch that, and a very heavy penalty on big changes in steering angle from update step to update step. I found that this latter penalty had a very powerful effect and smoothed out the steering inputs dramatically. I also set a penalty on the speed of the vehicle deviating from 40mph to keep the car moving at a sensible speed.
 
 
 #### Selecting *N* and *dt* Values
 
 My approach to selecting N (timestep length) and dt (elapsed duration between timesteps) values was to start by using the guidance from the Udacity material that the car should only be predicting state a few seconds into the future, at most. The combination of dt and N equate to how far into the future we look. As an example, dt of 1.0 and N of 5 predicts 5 seconds into the future. The larger dt is, the larger the spacing in time between prediction states and hence we lose granuality, this is especially important around corners. 
 
-I chose to back into the problem using the Udacity course direction, so I set the amount of time I wanted to look into the future as 3 seconds ("a few seconds at most"). Next I set dt as the spacing in time between update steps. I set N by deriving it using the equation:
+I chose to back into the problem using the Udacity course direction, so I set the amount of time I wanted to look into the future as 2 seconds ("a few seconds at most"). Next I set dt as the spacing in time between update steps. I set N by deriving it using the equation:
 
 *N = Time Horizon / dt*
 
-I pretty much started and ended with 3 seconds as being my Time Horizon, and played with dt between 0.1 and slowly increased it until I started getting unstable readings. I landed on 0.4, which makes *N = 3 / 0.4 = 7*.
+I pretty much started and ended with 2 seconds as being my Time Horizon, and played with dt between 0.1 and slowly increased it until I started getting unstable readings. I landed on 0.4, which makes *N = 2 / 0.2 = 10*.
 
-The result was that I had great tracking around the circuit at ~30mph. I found that increasing the speed caused problems. If I had more time I would experiment with changing the Time Horizon and dt and N values while increasing speed. It could be that changes in target speed should alter these values. It should be noted that a lower value of N is preferable as it means less computation is required as all algorithms I used were running in real-time.
+The result was that I had great tracking around the circuit at ~40mph. I found that increasing the speed caused problems. If I had more time I would experiment with changing the Time Horizon and dt and N values while increasing speed. It could be that changes in target speed should alter these values. It should be noted that a lower value of N is preferable as it means less computation is required as all algorithms I used were running in real-time.
 
 #### Dealing with Latency
 

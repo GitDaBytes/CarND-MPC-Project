@@ -92,6 +92,11 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
+		  double delta = j[1]["steering_angle"];
+		  delta *= -1; // reverse angle as sim uses opposite rotation direction
+
+		  //cout << "SDATA: " << sdata << endl;
+
           /*
           * TODO: Calculate steering angle and throttle using MPC.
           *
@@ -112,11 +117,6 @@ int main() {
 			  // now switch coords axis from map to car
 			  ptsx[i] = delta_x * cos(-psi) - delta_y * sin(-psi);
 			  ptsy[i] = delta_x * sin(-psi) + delta_y * cos(-psi);
-
-			  // Todo: do we need this? 
-			  // This check is to try and stop the waypoints appearing behind the car
-			  //if (ptsx[i] < 0)
-				//  ptsx[i] = 0.1;
 		  }
 
 		  Eigen::VectorXd ptsx_eig = Eigen::VectorXd::Map(ptsx.data(), ptsx.size());
@@ -128,29 +128,35 @@ int main() {
 
 
 		  // make prediction as to where we will be 100ms into future. This is what we will use as our current state
-		  Eigen::VectorXd state(6);
+		  
 
 		  const double latency_estimate = 100 / 1000.0; // 100ms
 
-		  //double estimated_x_pos_after_latency = 0 + v * std::cos(psi) * latency_estimate;
-		  //double estimated_y_pos_after_latency = 0 + v * std::sin(psi) * latency_estimate;
-
-		  double estimated_x_pos_after_latency = v * latency_estimate;
-
 		  // compute the cross track error where our car is after estimated latency
-		  double cte = polyeval(coeffs, estimated_x_pos_after_latency);
+		  double cte = polyeval(coeffs, 0);
 
 		  double epsi = -atan(coeffs[1]);
 
+		  const double MPH_TO_MS = 1609.34 / 60.0 / 60.0;
+
 		  // convert speed from mph to ms
-		  v = (v * 1609.34) / 60.0 / 60.0;
+		  v *= MPH_TO_MS;
+
+		  psi	 = delta; // in coordinate now, so use steering angle to predict x and y
+		  px	 = v * cos(psi)  * latency_estimate;
+		  py	 = v * sin(psi)  * latency_estimate;
+		  cte	+= v * sin(epsi) * latency_estimate;
+		  epsi	+= v * delta*latency_estimate / MPC::Lf;
+		  psi	+= v * delta*latency_estimate / MPC::Lf;
+		  ///v		+= a * latency_estimate;
 
 		  // set car estimated state
 
-		  state <<	//estimated_x_pos_after_latency,
-					v * latency_estimate,
-					0,// ..estimated_y_pos_after_latency,
-					0,//psi, 
+		  Eigen::VectorXd state(6);
+
+		  state <<	px,
+					py,
+					psi, 
 					v, 
 					cte, 
 					epsi;

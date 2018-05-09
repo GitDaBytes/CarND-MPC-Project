@@ -13,9 +13,9 @@ using CppAD::AD;
 // - timePredictionHorizon should be as large as possible and
 // - dt should be as small as possible
 
-const double timePredictionHorizon = 3.0; // number of secs we want to look into the future
+const double timePredictionHorizon = 2.0; // number of secs we want to look into the future
 
-const double dt = .4; // time diff per step in seconds
+const double dt = .2; // time diff per step in seconds
 const size_t N  = static_cast<size_t>(timePredictionHorizon / dt); // number of timesteps into the horizon
 
 
@@ -63,7 +63,7 @@ class FG_eval {
 
 	  const double target_cte = 0;  // we want to be on the target line
 	  const double target_epsi = 0; // we want to aim right down the line
-	  const double target_v = (30 * 1609.34) / 60.0 / 60.0; // 30 mph in m/s
+	  const double target_v = (40 * 1609.34) / 60.0 / 60.0; // 30 mph in m/s
 
 
 	  const double penalty_use_of_accelerator = 10.0;
